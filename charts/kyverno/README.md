@@ -2,7 +2,7 @@
 
 Kubernetes Native Policy Management
 
-![Version: v0.0.0](https://img.shields.io/badge/Version-v0.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
+![Version: 3.2.5](https://img.shields.io/badge/Version-3.2.5-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v1.12.4](https://img.shields.io/badge/AppVersion-v1.12.4-informational?style=flat-square)
 
 ## About
 
@@ -275,6 +275,7 @@ The chart values are organised per component.
 | crds.migration.podAntiAffinity | object | `{}` | Pod anti affinity constraints. |
 | crds.migration.podAffinity | object | `{}` | Pod affinity constraints. |
 | crds.migration.podLabels | object | `{}` | Pod labels. |
+| crds.migration.podAnnotations | object | `{}` | Pod annotations. |
 | crds.migration.nodeAffinity | object | `{}` | Node affinity constraints. |
 | crds.migration.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"privileged":false,"readOnlyRootFilesystem":true,"runAsGroup":65534,"runAsNonRoot":true,"runAsUser":65534,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the hook containers |
 
@@ -511,7 +512,6 @@ The chart values are organised per component.
 | backgroundController.metering.port | int | `8000` | Prometheus endpoint port |
 | backgroundController.metering.collector | string | `""` | Otel collector endpoint |
 | backgroundController.metering.creds | string | `""` | Otel collector credentials |
-| backgroundController.server | object | `{"port":9443}` | backgroundController server port in case you are using hostNetwork: true, you might want to change the port the backgroundController is listening to |
 | backgroundController.profiling.enabled | bool | `false` | Enable profiling |
 | backgroundController.profiling.port | int | `6060` | Profiling endpoint port |
 | backgroundController.profiling.serviceType | string | `"ClusterIP"` | Service type. |
@@ -667,7 +667,6 @@ The chart values are organised per component.
 | reportsController.metering.port | int | `8000` | Prometheus endpoint port |
 | reportsController.metering.collector | string | `nil` | Otel collector endpoint |
 | reportsController.metering.creds | string | `nil` | Otel collector credentials |
-| reportsController.server | object | `{"port":9443}` | reportsController server port in case you are using hostNetwork: true, you might want to change the port the reportsController is listening to |
 | reportsController.profiling.enabled | bool | `false` | Enable profiling |
 | reportsController.profiling.port | int | `6060` | Profiling endpoint port |
 | reportsController.profiling.serviceType | string | `"ClusterIP"` | Service type. |
@@ -700,6 +699,7 @@ The chart values are organised per component.
 | webhooksCleanup.podAntiAffinity | object | `{}` | Pod anti affinity constraints. |
 | webhooksCleanup.podAffinity | object | `{}` | Pod affinity constraints. |
 | webhooksCleanup.podLabels | object | `{}` | Pod labels. |
+| webhooksCleanup.podAnnotations | object | `{}` | Pod annotations. |
 | webhooksCleanup.nodeAffinity | object | `{}` | Node affinity constraints. |
 | webhooksCleanup.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"privileged":false,"readOnlyRootFilesystem":true,"runAsGroup":65534,"runAsNonRoot":true,"runAsUser":65534,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the hook containers |
 
@@ -767,6 +767,72 @@ The chart values are organised per component.
 | cleanupJobs.clusterAdmissionReports.podAntiAffinity | object | `{}` | Pod anti affinity constraints. |
 | cleanupJobs.clusterAdmissionReports.podAffinity | object | `{}` | Pod affinity constraints. |
 | cleanupJobs.clusterAdmissionReports.nodeAffinity | object | `{}` | Node affinity constraints. |
+| cleanupJobs.updateRequests.enabled | bool | `true` | Enable cleanup cronjob |
+| cleanupJobs.updateRequests.backoffLimit | int | `3` | Maximum number of retries before considering a Job as failed. Defaults to 3. |
+| cleanupJobs.updateRequests.ttlSecondsAfterFinished | string | `""` | Time until the pod from the cronjob is deleted |
+| cleanupJobs.updateRequests.image.registry | string | `nil` | Image registry |
+| cleanupJobs.updateRequests.image.repository | string | `"bitnami/kubectl"` | Image repository |
+| cleanupJobs.updateRequests.image.tag | string | `"1.28.5"` | Image tag Defaults to `latest` if omitted |
+| cleanupJobs.updateRequests.image.pullPolicy | string | `nil` | Image pull policy Defaults to image.pullPolicy if omitted |
+| cleanupJobs.updateRequests.imagePullSecrets | list | `[]` | Image pull secrets |
+| cleanupJobs.updateRequests.schedule | string | `"*/10 * * * *"` | Cronjob schedule |
+| cleanupJobs.updateRequests.threshold | int | `10000` | Reports threshold, if number of updateRequests are above this value the cronjob will start deleting them |
+| cleanupJobs.updateRequests.history | object | `{"failure":1,"success":1}` | Cronjob history |
+| cleanupJobs.updateRequests.podSecurityContext | object | `{}` | Security context for the pod |
+| cleanupJobs.updateRequests.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"privileged":false,"readOnlyRootFilesystem":true,"runAsNonRoot":true,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the containers |
+| cleanupJobs.updateRequests.priorityClassName | string | `""` | Pod PriorityClassName |
+| cleanupJobs.updateRequests.resources | object | `{}` | Job resources |
+| cleanupJobs.updateRequests.tolerations | list | `[]` | List of node taints to tolerate |
+| cleanupJobs.updateRequests.nodeSelector | object | `{}` | Node labels for pod assignment |
+| cleanupJobs.updateRequests.podAnnotations | object | `{}` | Pod Annotations |
+| cleanupJobs.updateRequests.podLabels | object | `{}` | Pod labels |
+| cleanupJobs.updateRequests.podAntiAffinity | object | `{}` | Pod anti affinity constraints. |
+| cleanupJobs.updateRequests.podAffinity | object | `{}` | Pod affinity constraints. |
+| cleanupJobs.updateRequests.nodeAffinity | object | `{}` | Node affinity constraints. |
+| cleanupJobs.ephemeralReports.enabled | bool | `true` | Enable cleanup cronjob |
+| cleanupJobs.ephemeralReports.backoffLimit | int | `3` | Maximum number of retries before considering a Job as failed. Defaults to 3. |
+| cleanupJobs.ephemeralReports.ttlSecondsAfterFinished | string | `""` | Time until the pod from the cronjob is deleted |
+| cleanupJobs.ephemeralReports.image.registry | string | `nil` | Image registry |
+| cleanupJobs.ephemeralReports.image.repository | string | `"bitnami/kubectl"` | Image repository |
+| cleanupJobs.ephemeralReports.image.tag | string | `"1.28.5"` | Image tag Defaults to `latest` if omitted |
+| cleanupJobs.ephemeralReports.image.pullPolicy | string | `nil` | Image pull policy Defaults to image.pullPolicy if omitted |
+| cleanupJobs.ephemeralReports.imagePullSecrets | list | `[]` | Image pull secrets |
+| cleanupJobs.ephemeralReports.schedule | string | `"*/10 * * * *"` | Cronjob schedule |
+| cleanupJobs.ephemeralReports.threshold | int | `10000` | Reports threshold, if number of updateRequests are above this value the cronjob will start deleting them |
+| cleanupJobs.ephemeralReports.history | object | `{"failure":1,"success":1}` | Cronjob history |
+| cleanupJobs.ephemeralReports.podSecurityContext | object | `{}` | Security context for the pod |
+| cleanupJobs.ephemeralReports.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"privileged":false,"readOnlyRootFilesystem":true,"runAsNonRoot":true,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the containers |
+| cleanupJobs.ephemeralReports.priorityClassName | string | `""` | Pod PriorityClassName |
+| cleanupJobs.ephemeralReports.resources | object | `{}` | Job resources |
+| cleanupJobs.ephemeralReports.tolerations | list | `[]` | List of node taints to tolerate |
+| cleanupJobs.ephemeralReports.nodeSelector | object | `{}` | Node labels for pod assignment |
+| cleanupJobs.ephemeralReports.podAnnotations | object | `{}` | Pod Annotations |
+| cleanupJobs.ephemeralReports.podLabels | object | `{}` | Pod labels |
+| cleanupJobs.ephemeralReports.podAntiAffinity | object | `{}` | Pod anti affinity constraints. |
+| cleanupJobs.ephemeralReports.podAffinity | object | `{}` | Pod affinity constraints. |
+| cleanupJobs.ephemeralReports.nodeAffinity | object | `{}` | Node affinity constraints. |
+| cleanupJobs.clusterEphemeralReports.enabled | bool | `true` | Enable cleanup cronjob |
+| cleanupJobs.clusterEphemeralReports.backoffLimit | int | `3` | Maximum number of retries before considering a Job as failed. Defaults to 3. |
+| cleanupJobs.clusterEphemeralReports.ttlSecondsAfterFinished | string | `""` | Time until the pod from the cronjob is deleted |
+| cleanupJobs.clusterEphemeralReports.image.registry | string | `nil` | Image registry |
+| cleanupJobs.clusterEphemeralReports.image.repository | string | `"bitnami/kubectl"` | Image repository |
+| cleanupJobs.clusterEphemeralReports.image.tag | string | `"1.28.5"` | Image tag Defaults to `latest` if omitted |
+| cleanupJobs.clusterEphemeralReports.image.pullPolicy | string | `nil` | Image pull policy Defaults to image.pullPolicy if omitted |
+| cleanupJobs.clusterEphemeralReports.imagePullSecrets | list | `[]` | Image pull secrets |
+| cleanupJobs.clusterEphemeralReports.schedule | string | `"*/10 * * * *"` | Cronjob schedule |
+| cleanupJobs.clusterEphemeralReports.threshold | int | `10000` | Reports threshold, if number of reports are above this value the cronjob will start deleting them |
+| cleanupJobs.clusterEphemeralReports.history | object | `{"failure":1,"success":1}` | Cronjob history |
+| cleanupJobs.clusterEphemeralReports.podSecurityContext | object | `{}` | Security context for the pod |
+| cleanupJobs.clusterEphemeralReports.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"privileged":false,"readOnlyRootFilesystem":true,"runAsNonRoot":true,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the containers |
+| cleanupJobs.clusterEphemeralReports.priorityClassName | string | `""` | Pod PriorityClassName |
+| cleanupJobs.clusterEphemeralReports.resources | object | `{}` | Job resources |
+| cleanupJobs.clusterEphemeralReports.tolerations | list | `[]` | List of node taints to tolerate |
+| cleanupJobs.clusterEphemeralReports.nodeSelector | object | `{}` | Node labels for pod assignment |
+| cleanupJobs.clusterEphemeralReports.podAnnotations | object | `{}` | Pod Annotations |
+| cleanupJobs.clusterEphemeralReports.podLabels | object | `{}` | Pod Labels |
+| cleanupJobs.clusterEphemeralReports.podAntiAffinity | object | `{}` | Pod anti affinity constraints. |
+| cleanupJobs.clusterEphemeralReports.podAffinity | object | `{}` | Pod affinity constraints. |
+| cleanupJobs.clusterEphemeralReports.nodeAffinity | object | `{}` | Node affinity constraints. |
 
 ### Other
 
@@ -796,6 +862,7 @@ The chart values are organised per component.
 | policyReportsCleanup.podAntiAffinity | object | `{}` | Pod anti affinity constraints. |
 | policyReportsCleanup.podAffinity | object | `{}` | Pod affinity constraints. |
 | policyReportsCleanup.podLabels | object | `{}` | Pod labels. |
+| policyReportsCleanup.podAnnotations | object | `{}` | Pod annotations. |
 | policyReportsCleanup.nodeAffinity | object | `{}` | Node affinity constraints. |
 | policyReportsCleanup.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"privileged":false,"readOnlyRootFilesystem":true,"runAsGroup":65534,"runAsNonRoot":true,"runAsUser":65534,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the hook containers |
 
@@ -858,8 +925,8 @@ Kubernetes: `>=1.25.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
-|  | crds | v0.0.0 |
-|  | grafana | v0.0.0 |
+|  | crds | 3.2.5 |
+|  | grafana | 3.2.5 |
 
 ## Maintainers
 

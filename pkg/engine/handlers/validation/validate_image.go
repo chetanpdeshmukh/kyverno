@@ -45,7 +45,7 @@ func (h validateImageHandler) Process(
 	resource unstructured.Unstructured,
 	rule kyvernov1.Rule,
 	_ engineapi.EngineContextLoader,
-	exceptions []*kyvernov2beta1.PolicyException,
+	exceptions []kyvernov2beta1.PolicyException,
 ) (unstructured.Unstructured, []engineapi.RuleResponse) {
 	// check if there is a policy exception matches the incoming resource
 	exception := engineutils.MatchesException(exceptions, policyContext, logger)
@@ -53,11 +53,11 @@ func (h validateImageHandler) Process(
 		key, err := cache.MetaNamespaceKeyFunc(exception)
 		if err != nil {
 			logger.Error(err, "failed to compute policy exception key", "namespace", exception.GetNamespace(), "name", exception.GetName())
-			return resource, handlers.WithError(rule, engineapi.Validation, "failed to compute exception key", err)
+			return resource, handlers.WithError(rule, engineapi.ImageVerify, "failed to compute exception key", err)
 		} else {
 			logger.V(3).Info("policy rule skipped due to policy exception", "exception", key)
 			return resource, handlers.WithResponses(
-				engineapi.RuleSkip(rule.Name, engineapi.Validation, "rule skipped due to policy exception "+key).WithException(exception),
+				engineapi.RuleSkip(rule.Name, engineapi.ImageVerify, "rule skipped due to policy exception "+key).WithException(exception),
 			)
 		}
 	}
@@ -67,7 +67,7 @@ func (h validateImageHandler) Process(
 	for _, v := range rule.VerifyImages {
 		imageVerify := v.Convert()
 		for _, infoMap := range policyContext.JSONContext().ImageInfo() {
-			for _, imageInfo := range infoMap {
+			for name, imageInfo := range infoMap {
 				image := imageInfo.String()
 
 				if !engineutils.ImageMatches(image, imageVerify.ImageReferences) {
@@ -76,7 +76,7 @@ func (h validateImageHandler) Process(
 				}
 
 				logger.V(4).Info("validating image", "image", image)
-				if v, err := validateImage(policyContext, imageVerify, imageInfo, logger); err != nil {
+				if v, err := validateImage(policyContext, imageVerify, name, imageInfo, logger); err != nil {
 					return resource, handlers.WithFail(rule, engineapi.ImageVerify, err.Error())
 				} else if v == engineapi.ImageVerificationSkip {
 					skippedImages = append(skippedImages, image)
@@ -90,15 +90,15 @@ func (h validateImageHandler) Process(
 	logger.V(4).Info("validated image", "rule", rule.Name)
 	if len(passedImages) > 0 || len(passedImages)+len(skippedImages) == 0 {
 		if len(skippedImages) > 0 {
-			return resource, handlers.WithPass(rule, engineapi.Validation, strings.Join(append([]string{"image verified, skipped images:"}, skippedImages...), " "))
+			return resource, handlers.WithPass(rule, engineapi.ImageVerify, strings.Join(append([]string{"image verified, skipped images:"}, skippedImages...), " "))
 		}
-		return resource, handlers.WithPass(rule, engineapi.Validation, "image verified")
+		return resource, handlers.WithPass(rule, engineapi.ImageVerify, "image verified")
 	} else {
-		return resource, handlers.WithSkip(rule, engineapi.Validation, strings.Join(append([]string{"image skipped, skipped images:"}, skippedImages...), " "))
+		return resource, handlers.WithSkip(rule, engineapi.ImageVerify, strings.Join(append([]string{"image skipped, skipped images:"}, skippedImages...), " "))
 	}
 }
 
-func validateImage(ctx engineapi.PolicyContext, imageVerify *kyvernov1.ImageVerification, imageInfo apiutils.ImageInfo, log logr.Logger) (engineapi.ImageVerificationMetadataStatus, error) {
+func validateImage(ctx engineapi.PolicyContext, imageVerify *kyvernov1.ImageVerification, name string, imageInfo apiutils.ImageInfo, log logr.Logger) (engineapi.ImageVerificationMetadataStatus, error) {
 	var verified engineapi.ImageVerificationMetadataStatus
 	var err error
 	image := imageInfo.String()

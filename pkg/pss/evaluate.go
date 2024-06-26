@@ -77,7 +77,7 @@ func exemptExclusions(defaultCheckResults, excludeCheckResults []pssutils.PSSChe
 	}
 
 	for _, excludeResult := range excludeCheckResults {
-		for _, checkID := range pssutils.PSS_control_name_to_ids[exclude.ControlName] {
+		for _, checkID := range pssutils.PSS_controls_to_check_id[exclude.ControlName] {
 			if excludeResult.ID == checkID {
 				for _, excludeFieldErr := range *excludeResult.CheckResult.ErrList {
 					var excludeField, excludeContainerType string
@@ -147,7 +147,7 @@ func exemptExclusions(defaultCheckResults, excludeCheckResults []pssutils.PSSChe
 		}
 	}
 
-	var newDefaultCheckResults []pssutils.PSSCheckResult
+	newDefaultCheckResults := make([]pssutils.PSSCheckResult, 0, len(defaultCheckResultsMap))
 	for _, result := range defaultCheckResultsMap {
 		newDefaultCheckResults = append(newDefaultCheckResults, result)
 	}
@@ -189,7 +189,7 @@ func parseField(field string) (string, []int, string, bool) {
 	matchesIdx := regexIndex.FindAllStringSubmatch(field, -1)
 	matchesStr := regexStr.FindAllString(field, -1)
 	field = regexIndex.ReplaceAllString(field, "*")
-	var indexes []int
+	indexes := make([]int, 0, len(matchesIdx))
 	for _, match := range matchesIdx {
 		index, _ := strconv.Atoi(match[0])
 		indexes = append(indexes, index)
@@ -313,7 +313,7 @@ func GetPodWithMatchingContainers(exclude kyvernov1.PodSecurityStandard, pod *co
 
 // Get restrictedFields from Check.ID
 func GetRestrictedFields(check policy.Check) []pssutils.RestrictedField {
-	for _, control := range pssutils.PSS_control_name_to_ids {
+	for _, control := range pssutils.PSS_controls_to_check_id {
 		for _, checkID := range control {
 			if string(check.ID) == checkID {
 				return pssutils.PSS_controls[checkID]

@@ -391,11 +391,11 @@ func (pc *policyController) requeuePolicies() {
 	}
 }
 
-func (pc *policyController) handleUpdateRequest(ur *kyvernov1beta1.UpdateRequest, triggerResource *unstructured.Unstructured, rule kyvernov1.Rule, policy kyvernov1.PolicyInterface) (skip bool, err error) {
+func (pc *policyController) handleUpdateRequest(ur *kyvernov1beta1.UpdateRequest, triggerResource *unstructured.Unstructured, ruleName string, policy kyvernov1.PolicyInterface) (skip bool, err error) {
 	namespaceLabels := engineutils.GetNamespaceSelectorsFromNamespaceLister(triggerResource.GetKind(), triggerResource.GetNamespace(), pc.nsLister, pc.log)
 	policyContext, err := backgroundcommon.NewBackgroundContext(pc.log, pc.client, ur, policy, triggerResource, pc.configuration, pc.jp, namespaceLabels)
 	if err != nil {
-		return false, fmt.Errorf("failed to build policy context for rule %s: %w", rule.Name, err)
+		return false, fmt.Errorf("failed to build policy context for rule %s: %w", ruleName, err)
 	}
 
 	engineResponse := pc.engine.ApplyBackgroundChecks(context.TODO(), policyContext)
@@ -405,7 +405,11 @@ func (pc *policyController) handleUpdateRequest(ur *kyvernov1beta1.UpdateRequest
 
 	for _, ruleResponse := range engineResponse.PolicyResponse.Rules {
 		if ruleResponse.Status() != engineapi.RuleStatusPass {
-			pc.log.V(4).Info("skip creating URs on policy update", "policy", policy.GetName(), "rule", rule.Name, "rule.Status", ruleResponse.Status())
+			pc.log.V(4).Info("skip creating URs on policy update", "policy", policy.GetName(), "rule", ruleName, "rule.Status", ruleResponse.Status())
+			continue
+		}
+
+		if ruleResponse.Name() != ur.Spec.GetRuleName() {
 			continue
 		}
 
@@ -424,18 +428,58 @@ func (pc *policyController) handleUpdateRequest(ur *kyvernov1beta1.UpdateRequest
 	return false, err
 }
 
-func generateTriggers(client dclient.Interface, rule kyvernov1.Rule, log logr.Logger) []*unstructured.Unstructured {
-	list := &unstructured.UnstructuredList{}
+func getTriggers(client dclient.Interface, rule kyvernov1.Rule, isNamespacedPolicy bool, policyNamespace string, log logr.Logger) []*unstructured.Unstructured {
+	var resources []*unstructured.Unstructured
 
-	kinds := fetchUniqueKinds(rule)
+	appendResources := func(match kyvernov1.ResourceDescription) {
+		resources = append(resources, getResources(client, policyNamespace, isNamespacedPolicy, match, log)...)
+	}
 
-	for _, kind := range kinds {
-		mlist, err := client.ListResource(context.TODO(), "", kind, "", rule.MatchResources.Selector)
+	if !rule.MatchResources.ResourceDescription.IsEmpty() {
+		appendResources(rule.MatchResources.ResourceDescription)
+	}
+
+	for _, any := range rule.MatchResources.Any {
+		appendResources(any.ResourceDescription)
+	}
+
+	for _, all := range rule.MatchResources.All {
+		appendResources(all.ResourceDescription)
+	}
+
+	return resources
+}
+
+func getResources(client dclient.Interface, policyNs string, isNamespacedPolicy bool, match kyvernov1.ResourceDescription, log logr.Logger) []*unstructured.Unstructured {
+	var items []*unstructured.Unstructured
+
+	for _, kind := range match.Kinds {
+		group, version, kind, _ := kubeutils.ParseKindSelector(kind)
+
+		namespace := ""
+		if isNamespacedPolicy {
+			namespace = policyNs
+		}
+
+		groupVersion := ""
+		if group != "*" && version != "*" {
+			groupVersion = group + "/" + version
+		} else if version != "*" {
+			groupVersion = version
+		}
+
+		resources, err := client.ListResource(context.TODO(), groupVersion, kind, namespace, match.Selector)
 		if err != nil {
 			log.Error(err, "failed to list matched resource")
 			continue
 		}
-		list.Items = append(list.Items, mlist.Items...)
+
+		for i, res := range resources.Items {
+			if !resourceMatches(match, res, isNamespacedPolicy) {
+				continue
+			}
+			items = append(items, &resources.Items[i])
+		}
 	}
-	return convertlist(list.Items)
+	return items
 }

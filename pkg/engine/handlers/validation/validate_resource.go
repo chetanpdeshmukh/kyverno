@@ -38,7 +38,7 @@ func (h validateResourceHandler) Process(
 	resource unstructured.Unstructured,
 	rule kyvernov1.Rule,
 	contextLoader engineapi.EngineContextLoader,
-	exceptions []*kyvernov2beta1.PolicyException,
+	exceptions []kyvernov2beta1.PolicyException,
 ) (unstructured.Unstructured, []engineapi.RuleResponse) {
 	// check if there is a policy exception matches the incoming resource
 	exception := engineutils.MatchesException(exceptions, policyContext, logger)
@@ -222,7 +222,7 @@ func (v *validator) validateElements(ctx context.Context, foreach kyvernov1.ForE
 		}
 
 		v.policyContext.JSONContext().Reset()
-		policyContext := v.policyContext
+		policyContext := v.policyContext.Copy()
 		if err := engineutils.AddElementToContext(policyContext, element, index, v.nesting, elementScope); err != nil {
 			v.log.Error(err, "failed to add element to context")
 			return engineapi.RuleError(v.rule.Name, engineapi.Validation, "failed to process foreach", err), applyCount
@@ -339,7 +339,7 @@ func (v *validator) validatePatterns(resource unstructured.Unstructured) *engine
 				return engineapi.RuleFail(v.rule.Name, engineapi.Validation, v.buildErrorMessage(err, pe.Path))
 			}
 
-			return engineapi.RuleError(v.rule.Name, engineapi.Validation, v.buildErrorMessage(err, ""), nil)
+			return engineapi.RuleError(v.rule.Name, engineapi.Validation, v.buildErrorMessage(err, pe.Path), nil)
 		}
 
 		v.log.V(4).Info("successfully processed rule")
